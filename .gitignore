@@ -1,0 +1,16 @@
+.dub
+docs.json
+__dummy.html
+docs/
+/calbuild
+calbuild.so
+calbuild.dylib
+calbuild.dll
+calbuild.a
+calbuild.lib
+calbuild-test-*
+*.exe
+*.pdb
+*.o
+*.obj
+*.lst

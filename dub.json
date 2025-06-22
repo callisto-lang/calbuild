@@ -1,0 +1,9 @@
+{
+	"authors": [
+		"mesyeti"
+	],
+	"copyright": "Copyright © 2025, mesyeti",
+	"description": "Early Callisto build system",
+	"license": "MIT",
+	"name": "calbuild"
+}
