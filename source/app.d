@@ -4,6 +4,7 @@ import std.stdio;
 import std.string;
 import calbuild.init;
 import calbuild.build;
+import calbuild.clean;
 
 private string usage = "
 Usage: calbuild COMMAND <...>
@@ -22,6 +23,7 @@ int main(string[] args) {
 	switch (args[1]) {
 		case "init":  return Init();
 		case "build": return Build();
+		case "clean": return Clean();
 		default: {
 			stderr.writefln("Unknown command '%s'", args[1]);
 			return 1;

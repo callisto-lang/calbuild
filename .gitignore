@@ -14,3 +14,4 @@ calbuild-test-*
 *.o
 *.obj
 *.lst
+/test
