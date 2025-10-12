@@ -21,9 +21,9 @@ int main(string[] args) {
 	}
 
 	switch (args[1]) {
-		case "init":  return Init();
-		case "build": return Build();
-		case "clean": return Clean();
+		case "init":  return Init(args[2 .. $]);
+		case "build": return Build(args[2 .. $]);
+		case "clean": return Clean(args[2 .. $]);
 		default: {
 			stderr.writefln("Unknown command '%s'", args[1]);
 			return 1;

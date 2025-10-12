@@ -57,7 +57,7 @@ class Project {
 			auto lua2 = LuaState(null);
 			SetupLua(lua2);
 
-			auto oldDir = vars["dir"];
+			auto oldDir = vars["Dir"];
 			vars["Dir"] = dep;
 			lua.doString(readText(dep ~ "/project.lua"));
 			vars["Dir"] = oldDir;
@@ -92,8 +92,12 @@ class Project {
 		}
 	}
 
-	void Build() {
+	void Build(bool verbose, bool noDelete, bool profiler) {
 		string cmd = "cac %s -m -o %s -i ./.build/ " ~ vars["BuildFlags"];
+
+		if (profiler) {
+			cmd ~= " -p";
+		}
 
 		writefln(
 			"%s   Starting%s build of application '%s'",
@@ -101,9 +105,16 @@ class Project {
 		);
 
 		void BuildFile(SubProject project, DirEntry e, bool stub) {
-			string modPath = format(
-				"./.build/%s.%s", project.name, e.name.baseName().stripExtension()
-			);
+			string modPath;
+
+			if (project.path.endsWith(".cal")) {
+				modPath = format("./.build/%s", project.name);
+			}
+			else {
+				modPath = format(
+					"./.build/%s.%s", project.name, e.name.baseName().stripExtension()
+				);
+			}
 
 			if (exists(modPath ~ ".mod")) {
 				bool modNewer =
@@ -125,11 +136,28 @@ class Project {
 				}
 			}
 
-			string fCmd  = format(cmd, e.name, modPath) ~ (stub? " -stub" : "");
-			auto res     = system(fCmd.toStringz());
+			string fCmd = format(cmd, e.name, modPath) ~ (stub? " -stub" : "");
+
+			if (verbose) {
+				writeln(fCmd);
+			}
+
+			if (profiler) {
+				writefln("File: %s", e.name);
+			}
+
+			auto res = system(fCmd.toStringz());
 
 			if (res != 0) {
 				stderr.writeln(GetColour(Colour.Red) ~ "Build failed");
+				stderr.writefln("Command: %s", fCmd);
+
+				// the build folder now contains incomplete module files, which
+				// will ruin the build process, meaning i have to force a clean
+				// build next time
+				if (!noDelete) {
+					rmdirRecurse(".build");
+				}
 				exit(1);
 			}
 		}

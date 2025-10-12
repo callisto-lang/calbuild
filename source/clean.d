@@ -4,7 +4,7 @@ import std.file;
 import std.stdio;
 import calbuild.colour;
 
-int Clean() {
+int Clean(string[] args) {
 	if (!exists("project.lua")) {
 		stderr.writeln("No calbuild project here");
 		return 1;

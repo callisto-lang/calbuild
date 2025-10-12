@@ -4,7 +4,7 @@ import std.file;
 import std.stdio;
 import std.format;
 
-int Init() {
+int Init(string[] args) {
 	if (exists("project.lua")) {
 		stderr.writeln("Project already exists here");
 		return 1;
@@ -19,7 +19,7 @@ int Init() {
 	project ~= format(`project("%s", get("Dir") .. "source")` ~ '\n', name);
 
 	std.file.write("project.lua", project);
-	std.file.write(".gitignore", "/.calbuild\n");
+	std.file.write(".gitignore", "/.build\n");
 	mkdir("source");
 	writeln("Project created");
 	return 0;
