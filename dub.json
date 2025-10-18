@@ -3,9 +3,6 @@
 		"mesyeti"
 	],
 	"copyright": "Copyright © 2025, mesyeti",
-	"dependencies": {
-		"lumars": "~>1.12.1"
-	},
 	"description": "Early Callisto build system",
 	"license": "MIT",
 	"name": "calbuild"

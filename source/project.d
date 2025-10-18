@@ -8,7 +8,7 @@ import std.format;
 import std.string;
 import std.process;
 import core.stdc.stdlib : exit, system;
-import lumars;
+import calbuild.ysl;
 import calbuild.colour;
 
 struct SubProject {
@@ -17,54 +17,48 @@ struct SubProject {
 }
 
 class Project {
-	string[string] vars;
-	SubProject[]   projects;
-	string[]       deps;
+	YSLEnv       ysl;
+	SubProject[] projects;
+	string[]     deps;
 
 	this() {
-		
+		ysl = new YSLEnv();
 	}
 
-	void SetupLua(ref LuaState lua) {
-		lua.globalTable["set"] = (string var, string contents) {
-			vars[var] = contents;
-		};
-		lua.globalTable["get"] = (string var) {
-			if (var !in vars) {
-				stderr.writefln("Variable '%s' does not exist", var);
-				exit(1);
-			}
+	void SetupYSL() {
+		ysl.funcs["set"] = YSLFunc(2, (string[] args) {
+			ysl.vars[args[0]] = args[1];
+		});
+		ysl.funcs["project"] = YSLFunc(2, (string[] args) {
+			string dir = args[1][0] == '/'?
+				args[1] : ysl.vars["Dir"] ~ "/" ~ args[1];
 
-			return vars[var];
-		};
-		lua.globalTable["project"] = (string project, string directory) {
-			projects ~= SubProject(project, directory);
-		};
-		lua.globalTable["add"] = (string var, string contents) {
-			if (var in vars) {
-				vars[var] = vars[var] ~ contents;
+			projects ~= SubProject(args[0], dir);
+		});
+		ysl.funcs["add"] = YSLFunc(2, (string[] args) {
+			if (args[0] in ysl.vars) {
+				ysl.vars[args[0]] = ysl.vars[args[0]] ~ args[1];
 			}
 			else {
-				vars[var] = contents;
+				ysl.vars[args[0]] = args[1];
 			}
-		};
-		lua.globalTable["depends"] = (string dep) {
-			if (!exists(dep ~ "/project.lua")) {
-				stderr.writefln("'%s' is not a calbuild project", dep);
+		});
+		ysl.funcs["depends"] = YSLFunc(1, (string[] args) {
+			string dir = args[0][0] == '/'? args[0] : ysl.vars["Dir"] ~ "/" ~ args[0];
+
+			if (!exists(dir ~ "/project.ysl")) {
+				stderr.writefln("'%s' is not a calbuild project", args[0]);
 				exit(1);
 			}
 
-			auto lua2 = LuaState(null);
-			SetupLua(lua2);
-
-			auto oldDir = vars["Dir"];
-			vars["Dir"] = dep;
-			lua.doString(readText(dep ~ "/project.lua"));
-			vars["Dir"] = oldDir;
-		};
+			auto oldDir = ysl.vars["Dir"];
+			ysl.vars["Dir"] = dir;
+			ysl.Run(readText(args[0] ~ "/project.ysl"));
+			ysl.vars["Dir"] = oldDir;
+		});
 	}
 
-	void Load(string path = "project.lua") {
+	void Load(string path = "project.ysl") {
 		static firstLoad = true;
 
 		if (!exists(path)) {
@@ -74,26 +68,25 @@ class Project {
 
 		// set default values
 		if (firstLoad) {
-			vars["BuildFlags"] = "";
-			vars["LinkFlags"]  = "";
+			ysl.vars["BuildFlags"] = "";
+			ysl.vars["LinkFlags"]  = "";
 			firstLoad          = false;
 		}
 
-		auto code = readText(path);
-		auto lua  = LuaState(null);
+		SetupYSL();
 
-		SetupLua(lua);
-		vars["Dir"] = dirName(path);
-		lua.doString(code);
+		ysl.vars["Dir"] = dirName(path);
 
-		if ("Name" !in vars) {
+		ysl.Run(readText(path));
+
+		if ("Name" !in ysl.vars) {
 			stderr.writeln("Project must have 'Name' value");
 			exit(1);
 		}
 	}
 
 	void Build(bool verbose, bool noDelete, bool profiler) {
-		string cmd = "cac %s -m -o %s -i ./.build/ " ~ vars["BuildFlags"];
+		string cmd = "cac %s -m -o %s -i ./.build/ " ~ ysl.vars["BuildFlags"];
 
 		if (profiler) {
 			cmd ~= " -p";
@@ -101,7 +94,7 @@ class Project {
 
 		writefln(
 			"%s   Starting%s build of application '%s'",
-			GetColour(Colour.Yellow), Reset(), vars["Name"]
+			GetColour(Colour.Yellow), Reset(), ysl.vars["Name"]
 		);
 
 		void BuildFile(SubProject project, DirEntry e, bool stub) {
@@ -196,7 +189,9 @@ class Project {
 			}
 		}
 
-		writefln("%s    Linking%s %s", GetColour(Colour.Green), Reset(), vars["Name"]);
+		writefln(
+			"%s    Linking%s %s", GetColour(Colour.Green), Reset(), ysl.vars["Name"]
+		);
 
 		// get all modules
 		string[] mods;
@@ -205,7 +200,8 @@ class Project {
 		}
 
 		string linkCmd = format(
-			"cac link %s -o %s %s", mods.join(" "), vars["Name"], vars["LinkFlags"]
+			"cac link %s -o %s %s", mods.join(" "), ysl.vars["Name"],
+			ysl.vars["LinkFlags"]
 		);
 
 		auto res = executeShell(linkCmd);
@@ -215,6 +211,9 @@ class Project {
 			exit(1);
 		}
 
-		writefln("%s      Built%s project '%s'", GetColour(Colour.Green), Reset(), vars["Name"]);
+		writefln(
+			"%s      Built%s project '%s'", GetColour(Colour.Green), Reset(),
+			ysl.vars["Name"]
+		);
 	}
 }
