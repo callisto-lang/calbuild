@@ -85,8 +85,15 @@ class Project {
 		}
 	}
 
-	void Build(bool verbose, bool noDelete, bool profiler) {
+	void Build(bool verbose, bool noDelete, bool profiler, string os, string backend) {
 		string cmd = "cac %s -m -o %s -i ./.build/ " ~ ysl.vars["BuildFlags"];
+
+		if (os != "") {
+			cmd ~= format(" -os %s", os);
+		}
+		if (backend != "") {
+			cmd ~= format(" -b %s", backend);
+		}
 
 		if (profiler) {
 			cmd ~= " -p";
