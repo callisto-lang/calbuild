@@ -21,8 +21,19 @@ class Project {
 	SubProject[] projects;
 	string[]     deps;
 
+	// options
+	bool useLibc = false;
+
 	this() {
 		ysl = new YSLEnv();
+	}
+
+	bool SubProjectExists(string name) {
+		foreach (ref proj ; projects) {
+			if (proj.name == name) return true;
+		}
+
+		return false;
 	}
 
 	void SetupYSL() {
@@ -32,6 +43,8 @@ class Project {
 		ysl.funcs["project"] = YSLFunc(2, (string[] args) {
 			string dir = args[1][0] == '/'?
 				args[1] : ysl.vars["Dir"] ~ "/" ~ args[1];
+
+			if (SubProjectExists(args[0])) return;
 
 			projects ~= SubProject(args[0], dir);
 		});
@@ -55,6 +68,14 @@ class Project {
 			ysl.vars["Dir"] = dir;
 			ysl.Run(readText(args[0] ~ "/project.ysl"));
 			ysl.vars["Dir"] = oldDir;
+		});
+		ysl.funcs["option"] = YSLFunc(1, (string[] args) {
+			switch (args[0]) {
+				case "UseLibC": useLibc = true; break;
+				default: {
+					stderr.writefln("Unknown option '%s'", args[0]);
+				}
+			}
 		});
 	}
 
@@ -93,6 +114,9 @@ class Project {
 		}
 		if (backend != "") {
 			cmd ~= format(" -b %s", backend);
+		}
+		if (useLibc) {
+			cmd ~= " -bo use-libc";
 		}
 
 		if (profiler) {
@@ -210,6 +234,10 @@ class Project {
 			"cac link %s -o %s %s", mods.join(" "), ysl.vars["Name"],
 			ysl.vars["LinkFlags"]
 		);
+
+		if (useLibc) {
+			linkCmd ~= " -lo use-libc";
+		}
 
 		auto res = executeShell(linkCmd);
 		if (res.status != 0) {
